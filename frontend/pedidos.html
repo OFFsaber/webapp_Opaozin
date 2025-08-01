@@ -1,1 +1,269 @@
- 
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Controle de Expedição - Pedidos</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <i class="fas fa-boxes"></i>
+                    <h1>Sistema de Controle de Expedição</h1>
+                </div>
+                <div class="header-right">
+                    <button id="reportsBtn" class="reports-btn">
+                        <i class="fas fa-chart-bar"></i>
+                        Relatórios
+                    </button>
+                    <span class="user-info">
+                        <i class="fas fa-user"></i>
+                        <span id="currentUser">Admin</span>
+                    </span>
+                    <button id="logoutBtn" class="logout-btn">
+                        <i class="fas fa-sign-out-alt"></i>
+                        Sair
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Filtros -->
+            <section class="filters-section">
+                <div class="filters-container">
+                    <h2><i class="fas fa-filter"></i> Filtros</h2>
+                    
+                    <div class="filters-grid">
+                        <div class="filter-group">
+                            <label for="dateFilter">Data de Saída:</label>
+                            <input type="date" id="dateFilter" class="filter-input">
+                        </div>
+                        
+                        <div class="filter-group client-autocomplete">
+                            <label for="clientFilter">Cliente:</label>
+                            <input type="text" id="clientFilter" class="filter-input" placeholder="Digite o código ou nome do cliente">
+                            <div id="clientDropdown" class="autocomplete-dropdown">
+                                <!-- Opções serão carregadas dinamicamente -->
+                            </div>
+                        </div>
+                        
+                        <div class="filter-group product-autocomplete">
+                            <label for="productFilter">Produto:</label>
+                            <input type="text" id="productFilter" class="filter-input" placeholder="Digite o código ou nome do produto">
+                            <div id="productDropdown" class="autocomplete-dropdown">
+                                <!-- Opções serão carregadas dinamicamente -->
+                            </div>
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label for="statusFilter">Status:</label>
+                            <select id="statusFilter" class="filter-input">
+                                <option value="">Todos os status</option>
+                                <option value="pendente">Pendente</option>
+                                <option value="separado">Separado</option>
+                            </select>
+                        </div>
+                        
+                        <div class="filter-actions">
+                            <button id="applyFilters" class="btn-primary">
+                                <i class="fas fa-search"></i>
+                                Aplicar Filtros
+                            </button>
+                            <button id="clearFilters" class="btn-secondary">
+                                <i class="fas fa-times"></i>
+                                Limpar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Lista de Pedidos -->
+            <section class="orders-section">
+                <div class="orders-header">
+                    <h2><i class="fas fa-list"></i> Lista de Pedidos</h2>
+                    <div class="orders-stats">
+                        <span class="stat-item">
+                            <i class="fas fa-clock text-warning"></i>
+                            <span id="pendingCount">0</span> Pendentes
+                        </span>
+                        <span class="stat-item">
+                            <i class="fas fa-check text-success"></i>
+                            <span id="completedCount">0</span> Separados
+                        </span>
+                    </div>
+                </div>
+
+                <div class="orders-container">
+                    <div id="ordersList" class="orders-list">
+                        <!-- Pedidos serão carregados dinamicamente aqui -->
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal de Detalhes do Pedido -->
+    <div id="orderModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Detalhes do Pedido</h3>
+                <button id="closeModal" class="close-btn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="modal-body">
+                <div class="order-info">
+                    <div class="info-row">
+                        <span class="info-label">Pedido:</span>
+                        <span id="modalOrderNumber" class="info-value"></span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Cliente:</span>
+                        <span id="modalClient" class="info-value"></span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Data:</span>
+                        <span id="modalDate" class="info-value"></span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Status:</span>
+                        <span id="modalStatus" class="info-value"></span>
+                    </div>
+                </div>
+
+                <div class="items-section">
+                    <h4><i class="fas fa-box"></i> Itens do Pedido</h4>
+                    <div id="modalItemsList" class="items-list">
+                        <!-- Itens serão carregados dinamicamente aqui -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button id="saveOrder" class="btn-primary">
+                    <i class="fas fa-save"></i>
+                    Salvar Alterações
+                </button>
+                <button id="cancelModal" class="btn-secondary">
+                    <i class="fas fa-times"></i>
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Relatórios -->
+    <div id="reportsModal" class="modal">
+        <div class="modal-content reports-modal">
+            <div class="modal-header">
+                <h3><i class="fas fa-chart-bar"></i> Relatórios</h3>
+                <button id="closeReportsModal" class="close-btn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="modal-body">
+                <div class="reports-tabs">
+                    <button class="tab-btn active" data-tab="separated">
+                        <i class="fas fa-check-circle"></i>
+                        Pedidos Separados
+                    </button>
+                    <button class="tab-btn" data-tab="pending">
+                        <i class="fas fa-clock"></i>
+                        Pedidos Pendentes
+                    </button>
+                    <button class="tab-btn" data-tab="missing">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Produtos Faltantes
+                    </button>
+                </div>
+
+                <!-- Relatório de Pedidos Separados -->
+                <div id="separated-tab" class="report-tab active">
+                    <div class="report-filters">
+                        <div class="filter-group">
+                            <label for="separatedDateFilter">Data de Saída:</label>
+                            <input type="date" id="separatedDateFilter" class="filter-input">
+                        </div>
+                        <button id="generateSeparatedReport" class="btn-primary">
+                            <i class="fas fa-search"></i>
+                            Gerar Relatório
+                        </button>
+                    </div>
+                    <div id="separatedReportContent" class="report-content">
+                        <!-- Conteúdo do relatório será carregado aqui -->
+                    </div>
+                </div>
+
+                <!-- Relatório de Pedidos Pendentes -->
+                <div id="pending-tab" class="report-tab">
+                    <div class="report-filters">
+                        <div class="filter-group">
+                            <label for="pendingDateFilter">Data de Saída:</label>
+                            <input type="date" id="pendingDateFilter" class="filter-input">
+                        </div>
+                        <button id="generatePendingReport" class="btn-primary">
+                            <i class="fas fa-search"></i>
+                            Gerar Relatório
+                        </button>
+                    </div>
+                    <div id="pendingReportContent" class="report-content">
+                        <!-- Conteúdo do relatório será carregado aqui -->
+                    </div>
+                </div>
+
+                <!-- Relatório de Produtos Faltantes -->
+                <div id="missing-tab" class="report-tab">
+                    <div class="report-filters">
+                        <div class="filter-group">
+                            <label for="departmentFilter">Departamento:</label>
+                            <select id="departmentFilter" class="filter-input">
+                                <option value="">Todos os departamentos</option>
+                                <option value="eletronicos">Eletrônicos</option>
+                                <option value="vestuario">Vestuário</option>
+                                <option value="casa">Casa e Jardim</option>
+                                <option value="esporte">Esporte</option>
+                            </select>
+                        </div>
+                        <button id="generateMissingReport" class="btn-primary">
+                            <i class="fas fa-search"></i>
+                            Gerar Relatório
+                        </button>
+                    </div>
+                    <div id="missingReportContent" class="report-content">
+                        <!-- Conteúdo do relatório será carregado aqui -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <div class="export-actions">
+                    <button id="exportPDF" class="btn-success">
+                        <i class="fas fa-file-pdf"></i>
+                        Exportar PDF
+                    </button>
+                    <button id="printReport" class="btn-info">
+                        <i class="fas fa-print"></i>
+                        Imprimir
+                    </button>
+                </div>
+                <button id="closeReportsModalBtn" class="btn-secondary">
+                    <i class="fas fa-times"></i>
+                    Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html> 
