@@ -1,99 +1,154 @@
-// Dados simulados para demonstração
+// Configuração da API
+const API_BASE_URL = window.location.origin + '/api';
+
+// Dados da aplicação
 let currentUser = null;
+let orders = [];
+let clients = [];
+let products = [];
 
-// Lista de clientes para autocomplete
-const clients = [
-    { code: "CLI001", name: "Cliente 1" },
-    { code: "CLI002", name: "Cliente 2" },
-    { code: "CLI003", name: "Cliente 3" },
-    { code: "CLI004", name: "Empresa ABC Ltda" },
-    { code: "CLI005", name: "Comércio XYZ" },
-    { code: "CLI006", name: "Distribuidora Central" },
-    { code: "CLI007", name: "Loja do Bairro" },
-    { code: "CLI008", name: "Supermercado Popular" }
-];
-
-// Lista de produtos para autocomplete
-const products = [
-    { code: "PROD001", name: "Produto A" },
-    { code: "PROD002", name: "Produto B" },
-    { code: "PROD003", name: "Produto C" },
-    { code: "PROD004", name: "Produto D" },
-    { code: "PROD005", name: "Produto E" },
-    { code: "PROD006", name: "Produto F" },
-    { code: "PROD007", name: "Produto G" },
-    { code: "PROD008", name: "Produto H" },
-    { code: "PROD009", name: "Produto I" },
-    { code: "PROD010", name: "Produto J" },
-    { code: "PROD011", name: "Produto K" },
-    { code: "PROD012", name: "Produto L" }
-];
-
-let orders = [
-    {
-        id: 1,
-        number: "PED-001",
-        client: "Cliente 1",
-        clientCode: "CLI001",
-        date: "2024-01-15",
-        status: "pendente",
-        items: [
-            { id: 1, name: "Produto A", code: "PROD001", quantity: 5, confirmed: false, confirmedQuantity: 0 },
-            { id: 2, name: "Produto B", code: "PROD002", quantity: 3, confirmed: false, confirmedQuantity: 0 },
-            { id: 3, name: "Produto C", code: "PROD003", quantity: 2, confirmed: false, confirmedQuantity: 0 }
-        ]
-    },
-    {
-        id: 2,
-        number: "PED-002",
-        client: "Cliente 2",
-        clientCode: "CLI002",
-        date: "2024-01-16",
-        status: "pendente",
-        items: [
-            { id: 4, name: "Produto D", code: "PROD004", quantity: 4, confirmed: false, confirmedQuantity: 0 },
-            { id: 5, name: "Produto E", code: "PROD005", quantity: 1, confirmed: false, confirmedQuantity: 0 }
-        ]
-    },
-    {
-        id: 3,
-        number: "PED-003",
-        client: "Cliente 3",
-        clientCode: "CLI003",
-        date: "2024-01-17",
-        status: "separado",
-        items: [
-            { id: 6, name: "Produto F", code: "PROD006", quantity: 6, confirmed: true, confirmedQuantity: 6 },
-            { id: 7, name: "Produto G", code: "PROD007", quantity: 2, confirmed: true, confirmedQuantity: 2 }
-        ]
-    },
-    {
-        id: 4,
-        number: "PED-004",
-        client: "Empresa ABC Ltda",
-        clientCode: "CLI004",
-        date: "2024-01-18",
-        status: "pendente",
-        items: [
-            { id: 8, name: "Produto H", code: "PROD008", quantity: 10, confirmed: true, confirmedQuantity: 7 },
-            { id: 9, name: "Produto I", code: "PROD009", quantity: 3, confirmed: false, confirmedQuantity: 0 }
-        ]
+// Funções de API
+async function apiRequest(endpoint, options = {}) {
+    try {
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            },
+            ...options
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('Erro na requisição API:', error);
+        throw error;
     }
-];
+}
+
+// Carregar dados da API
+async function loadDataFromAPI() {
+    try {
+        // Carregar pedidos
+        const pedidosResponse = await apiRequest('/pedidos');
+        orders = pedidosResponse.data || [];
+        
+        // Carregar opções de filtros
+        const filtrosResponse = await apiRequest('/pedidos/opcoes-filtros');
+        const filtrosData = filtrosResponse.data || {};
+        
+        clients = filtrosData.clientes || [];
+        products = []; // Produtos serão carregados conforme necessário
+        
+        // Atualizar dropdowns
+        updateFilterDropdowns(filtrosData);
+        
+        return true;
+    } catch (error) {
+        console.error('Erro ao carregar dados da API:', error);
+        showNotification('Erro ao carregar dados do servidor', 'error');
+        return false;
+    }
+}
+
+// Atualizar dropdowns de filtros
+function updateFilterDropdowns(filtrosData) {
+    // Atualizar dropdown de motoristas
+    const driverFilter = document.getElementById('driverFilter');
+    if (driverFilter) {
+        driverFilter.innerHTML = '<option value="">Todos os motoristas</option>';
+        filtrosData.motoristas?.forEach(motorista => {
+            driverFilter.innerHTML += `<option value="${motorista.CODIGO}">${motorista.NOME}</option>`;
+        });
+    }
+    
+    // Atualizar dropdown de veículos
+    const vehicleFilter = document.getElementById('vehicleFilter');
+    if (vehicleFilter) {
+        vehicleFilter.innerHTML = '<option value="">Todos os veículos</option>';
+        filtrosData.veiculos?.forEach(veiculo => {
+            vehicleFilter.innerHTML += `<option value="${veiculo.CODIGO}">${veiculo.DESCRICAO}</option>`;
+        });
+    }
+    
+    // Atualizar dropdown de clientes
+    const clientFilter = document.getElementById('clientFilter');
+    if (clientFilter) {
+        clientFilter.innerHTML = '<option value="">Todos os clientes</option>';
+        filtrosData.clientes?.forEach(cliente => {
+            clientFilter.innerHTML += `<option value="${cliente.CODIGO}">${cliente.NOME}</option>`;
+        });
+    }
+    
+    // Atualizar dropdown de vendedores
+    const vendedorFilter = document.getElementById('vendedorFilter');
+    if (vendedorFilter) {
+        vendedorFilter.innerHTML = '<option value="">Todos os vendedores</option>';
+        filtrosData.vendedores?.forEach(vendedor => {
+            vendedorFilter.innerHTML += `<option value="${vendedor.CODIGO}">${vendedor.NOME}</option>`;
+        });
+    }
+    
+    // Atualizar dropdown de transportadoras
+    const transportadoraFilter = document.getElementById('transportadoraFilter');
+    if (transportadoraFilter) {
+        transportadoraFilter.innerHTML = '<option value="">Todas as transportadoras</option>';
+        filtrosData.transportadoras?.forEach(transportadora => {
+            transportadoraFilter.innerHTML += `<option value="${transportadora.CODIGO}">${transportadora.NOME}</option>`;
+        });
+    }
+    
+    // Atualizar dropdown de cargas
+    const numCargaFilter = document.getElementById('numCargaFilter');
+    if (numCargaFilter && filtrosData.cargas) {
+        // Para cargas, vamos criar um datalist para autocomplete
+        const datalist = document.createElement('datalist');
+        datalist.id = 'cargasList';
+        filtrosData.cargas.forEach(carga => {
+            const option = document.createElement('option');
+            option.value = carga.NUMCARGA;
+            datalist.appendChild(option);
+        });
+        
+        // Remover datalist anterior se existir
+        const existingDatalist = document.getElementById('cargasList');
+        if (existingDatalist) {
+            existingDatalist.remove();
+        }
+        
+        document.body.appendChild(datalist);
+        numCargaFilter.setAttribute('list', 'cargasList');
+    }
+}
 
 let currentOrder = null;
 
-// Verificar se está na tela de login ou na aplicação principal
+// Inicialização da aplicação
 document.addEventListener('DOMContentLoaded', function() {
-    const loginForm = document.getElementById('loginForm');
-    const logoutBtn = document.getElementById('logoutBtn');
+    console.log('🚀 Aplicação iniciando...');
     
-    if (loginForm) {
-        // Tela de login
+    // Verificar se estamos na página de login ou na aplicação principal
+    const isLoginPage = window.location.pathname.includes('index.html') || window.location.pathname === '/';
+    
+    if (isLoginPage) {
+        console.log('📝 Configurando página de login...');
         setupLogin();
     } else {
-        // Aplicação principal
+        console.log('🏠 Configurando aplicação principal...');
         setupMainApp();
+    }
+});
+
+// Garantir que a data seja preenchida após todo o carregamento
+window.addEventListener('load', function() {
+    const today = new Date().toISOString().split('T')[0];
+    const dateFilter = document.getElementById('dateFilter');
+    if (dateFilter && !dateFilter.value) {
+        dateFilter.value = today;
+        console.log('📅 Data atual preenchida no window.load:', today);
     }
 });
 
@@ -125,7 +180,7 @@ function setupLogin() {
 }
 
 // Configuração da aplicação principal
-function setupMainApp() {
+async function setupMainApp() {
     // Verificar se usuário está logado
     const savedUser = localStorage.getItem('currentUser');
     if (!savedUser) {
@@ -141,11 +196,21 @@ function setupMainApp() {
     
     // Preencher data de saída com a data de hoje
     const today = new Date().toISOString().split('T')[0];
-    document.getElementById('dateFilter').value = today;
+    const dateFilter = document.getElementById('dateFilter');
+    if (dateFilter) {
+        dateFilter.value = today;
+        console.log('📅 Data atual preenchida:', today);
+    } else {
+        console.error('❌ Elemento dateFilter não encontrado');
+    }
     
-    // Carregar dados iniciais
-    loadOrders();
-    updateStats();
+    // Carregar dados da API
+    const success = await loadDataFromAPI();
+    if (success) {
+        // Carregar dados iniciais
+        loadOrders();
+        updateStats();
+    }
 }
 
 // Configurar event listeners
@@ -165,14 +230,36 @@ function setupEventListeners() {
     setupProductAutocomplete();
     
     // Modal
-    document.getElementById('closeModal').addEventListener('click', closeModal);
-    document.getElementById('cancelModal').addEventListener('click', closeModal);
-    document.getElementById('saveOrder').addEventListener('click', saveOrderChanges);
+    document.getElementById('closeModal').addEventListener('click', function() {
+        console.log('🔒 Botão X clicado');
+        closeModal();
+    });
+    document.getElementById('cancelModal').addEventListener('click', function() {
+        console.log('🔒 Botão Cancelar clicado');
+        closeModal();
+    });
+    document.getElementById('saveOrder').addEventListener('click', function() {
+        console.log('💾 Botão Salvar clicado');
+        saveOrderChanges();
+        closeModal();
+    });
     
     // Fechar modal clicando fora
     document.getElementById('orderModal').addEventListener('click', function(e) {
         if (e.target === this) {
+            console.log('🔒 Clicou fora do modal');
             closeModal();
+        }
+    });
+    
+    // Fechar modal com tecla ESC
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const modal = document.getElementById('orderModal');
+            if (modal && modal.style.display !== 'none') {
+                console.log('🔒 Tecla ESC pressionada');
+                closeModal();
+            }
         }
     });
     
@@ -192,6 +279,7 @@ function setupEventListeners() {
     document.getElementById('generateSeparatedReport').addEventListener('click', generateSeparatedReport);
     document.getElementById('generatePendingReport').addEventListener('click', generatePendingReport);
     document.getElementById('generateMissingReport').addEventListener('click', generateMissingReport);
+    document.getElementById('generateMissingByClientReport').addEventListener('click', generateMissingByClientReport);
     
     // Exportar relatórios
     document.getElementById('exportPDF').addEventListener('click', exportToPDF);
@@ -203,57 +291,97 @@ function setupEventListeners() {
             closeReportsModal();
         }
     });
+    
+    // Garantir que a data seja preenchida quando a página carregar
+    const today = new Date().toISOString().split('T')[0];
+    const dateFilter = document.getElementById('dateFilter');
+    if (dateFilter && !dateFilter.value) {
+        dateFilter.value = today;
+        console.log('📅 Data atual preenchida no evento:', today);
+    }
 }
 
 // Carregar lista de pedidos
-function loadOrders(filteredOrders = null) {
+async function loadOrders(filteredOrders = null) {
     const ordersList = document.getElementById('ordersList');
-    const ordersToShow = filteredOrders || orders;
     
-    ordersList.innerHTML = '';
-    
-    if (ordersToShow.length === 0) {
+    try {
+        let ordersToShow = filteredOrders;
+        
+        if (!ordersToShow) {
+            // Buscar pedidos da API
+            const response = await apiRequest('/pedidos');
+            ordersToShow = response.data || [];
+        }
+        
+        ordersList.innerHTML = '';
+        
+        if (ordersToShow.length === 0) {
+            ordersList.innerHTML = `
+                <div class="no-orders">
+                    <i class="fas fa-inbox fa-3x"></i>
+                    <p>Nenhum pedido encontrado</p>
+                </div>
+            `;
+            return;
+        }
+        
+        ordersToShow.forEach(order => {
+            const orderCard = createOrderCard(order);
+            ordersList.appendChild(orderCard);
+        });
+    } catch (error) {
+        console.error('Erro ao carregar pedidos:', error);
         ordersList.innerHTML = `
             <div class="no-orders">
-                <i class="fas fa-inbox fa-3x"></i>
-                <p>Nenhum pedido encontrado</p>
+                <i class="fas fa-exclamation-triangle fa-3x"></i>
+                <p>Erro ao carregar pedidos</p>
             </div>
         `;
-        return;
     }
-    
-    ordersToShow.forEach(order => {
-        const orderCard = createOrderCard(order);
-        ordersList.appendChild(orderCard);
-    });
 }
 
 // Criar card de pedido
 function createOrderCard(order) {
     const card = document.createElement('div');
-    card.className = `order-card ${order.status}`;
-    card.dataset.orderId = order.id;
+    const statusExpedicao = order.STATUS_EXPEDICAO || 'PENDENTE';
+    const statusBit = order.STATUS_BIT !== null && order.STATUS_BIT !== undefined ? order.STATUS_BIT : 0;
+    const isSeparado = statusExpedicao === 'SEPARADO' || statusBit === 1;
     
-    const confirmedItems = order.items.filter(item => item.confirmed).length;
-    const totalItems = order.items.length;
+    card.className = `order-card ${isSeparado ? 'separado' : 'pendente'}`;
+    card.dataset.orderId = order.NUMPEDIDO;
     
     card.innerHTML = `
         <div class="order-header">
-            <div class="order-number">${order.number}</div>
-            <div class="order-status ${order.status}">${order.status}</div>
+            <div class="order-number">${order.NUMPEDIDO}</div>
+            <div class="order-status ${isSeparado ? 'separado' : 'pendente'}">
+                ${isSeparado ? 'Separado' : 'Pendente'}
+            </div>
         </div>
         <div class="order-details">
             <div class="order-detail">
                 <div class="detail-label">Cliente</div>
-                <div class="detail-value">${order.client}</div>
+                <div class="detail-value">${order.CLIENTE}</div>
             </div>
             <div class="order-detail">
-                <div class="detail-label">Data</div>
-                <div class="detail-value">${formatDate(order.date)}</div>
+                <div class="detail-label">Data Saída</div>
+                <div class="detail-value">${formatDate(order.DTSAIDA)}</div>
             </div>
             <div class="order-detail">
-                <div class="detail-label">Itens</div>
-                <div class="detail-value">${confirmedItems}/${totalItems} confirmados</div>
+                <div class="detail-label">Data Entrega</div>
+                <div class="detail-value">${formatDate(order.DTPREVENTREGA)}</div>
+            </div>
+            <div class="order-detail">
+                <div class="detail-label">Motorista</div>
+                <div class="detail-value">${order.MOTORISTA || 'N/A'}</div>
+            </div>
+            <div class="order-detail">
+                <div class="detail-label">Veículo</div>
+                <div class="detail-value">${order.VEICULO || 'N/A'}</div>
+            </div>
+            <div class="order-detail">
+                <div class="detail-label">Produtos Faltantes</div>
+                <div class="detail-value">${order.QTD_PRODUTOS_FALTANTES || 0}</div>
             </div>
         </div>
     `;
@@ -264,21 +392,45 @@ function createOrderCard(order) {
 }
 
 // Abrir modal de detalhes do pedido
-function openOrderModal(order) {
-    currentOrder = order;
-    const modal = document.getElementById('orderModal');
-    
-    // Preencher informações do pedido
-    document.getElementById('modalTitle').textContent = `Pedido ${order.number}`;
-    document.getElementById('modalOrderNumber').textContent = order.number;
-    document.getElementById('modalClient').textContent = order.client;
-    document.getElementById('modalDate').textContent = formatDate(order.date);
-    document.getElementById('modalStatus').textContent = order.status;
-    
-    // Carregar itens
-    loadOrderItems(order);
-    
-    modal.style.display = 'block';
+async function openOrderModal(order) {
+    try {
+        // Usar os dados do pedido que já temos
+        currentOrder = order;
+        
+        const modal = document.getElementById('orderModal');
+        
+        // Resetar propriedades CSS do modal para garantir que seja exibido
+        modal.style.display = 'block';
+        modal.style.visibility = 'visible';
+        modal.style.opacity = '1';
+        modal.style.zIndex = '1000';
+        modal.style.pointerEvents = 'auto';
+        
+        // Preencher informações do pedido (já temos esses dados)
+        document.getElementById('modalTitle').textContent = `Pedido ${currentOrder.NUMPEDIDO}`;
+        document.getElementById('modalOrderNumber').textContent = currentOrder.NUMPEDIDO;
+        document.getElementById('modalClient').textContent = currentOrder.CLIENTE || 'N/A';
+        document.getElementById('modalDepartureDate').textContent = currentOrder.DTSAIDA || 'N/A';
+        document.getElementById('modalDeliveryDate').textContent = currentOrder.DTPREVENTREGA || 'N/A';
+        document.getElementById('modalDriver').textContent = currentOrder.MOTORISTA || 'N/A';
+        document.getElementById('modalVehicle').textContent = currentOrder.VEICULO || 'N/A';
+        document.getElementById('modalMissingProducts').textContent = currentOrder.QTD_PRODUTOS_FALTANTES || '0';
+        
+        // Buscar itens do pedido
+        const itensResponse = await apiRequest(`/pedidos/${currentOrder.NUMPEDIDO}/itens`);
+        if (itensResponse.success) {
+            currentOrder.itens = itensResponse.data;
+            loadOrderItems(currentOrder);
+        }
+        
+        // Status de expedição já está incluído nos dados do pedido
+        console.log('Status de expedição:', currentOrder.STATUS_EXPEDICAO);
+        
+        console.log('Modal aberto com sucesso');
+    } catch (error) {
+        console.error('Erro ao abrir modal:', error);
+        showNotification('Erro ao carregar detalhes do pedido', 'error');
+    }
 }
 
 // Carregar itens do pedido no modal
@@ -286,7 +438,12 @@ function loadOrderItems(order) {
     const itemsList = document.getElementById('modalItemsList');
     itemsList.innerHTML = '';
     
-    order.items.forEach(item => {
+    if (!order.itens || order.itens.length === 0) {
+        itemsList.innerHTML = '<p>Nenhum item encontrado para este pedido.</p>';
+        return;
+    }
+    
+    order.itens.forEach(item => {
         const itemCard = createItemCard(item);
         itemsList.appendChild(itemCard);
     });
@@ -295,133 +452,212 @@ function loadOrderItems(order) {
 // Criar card de item
 function createItemCard(item) {
     const card = document.createElement('div');
-    const isConfirmed = item.confirmed;
-    const isQuantityLess = item.confirmedQuantity > 0 && item.confirmedQuantity < item.quantity;
+    const isConfirmed = item.QTENTREGUE > 0;
+    const isFullyConfirmed = item.QTENTREGUE >= item.QTPEDIDA;
+    const isPartiallyConfirmed = isConfirmed && !isFullyConfirmed;
     
     let cardClass = 'item-card';
-    if (isConfirmed) {
+    if (isFullyConfirmed) {
         cardClass += ' confirmado';
-    }
-    if (isQuantityLess) {
+    } else if (isPartiallyConfirmed) {
         cardClass += ' quantidade-menor';
     }
     
     card.className = cardClass;
-    card.dataset.itemId = item.id;
+    card.dataset.itemId = item.ID;
     
     card.innerHTML = `
         <div class="item-header">
             <div>
-                <div class="item-name">${item.name}</div>
-                <div class="item-code">Código: ${item.code}</div>
+                <div class="item-name">${item.PRODUTO || 'N/A'}</div>
+                <div class="item-code">Código: ${item.CODPRODUTO || 'N/A'}</div>
             </div>
             <div class="item-quantity">
                 <div class="quantity-label">Quantidade Solicitada</div>
-                <div class="detail-value">${item.quantity}</div>
+                <div class="detail-value">${item.QTPEDIDA || 0}</div>
             </div>
         </div>
         <div class="item-details">
             <div class="item-quantity">
-                <div class="quantity-label">Quantidade Confirmada</div>
-                <input type="number" class="quantity-input" value="${item.confirmedQuantity}" min="0" max="${item.quantity * 2}">
-            </div>
-            <div class="item-actions">
-                <button class="confirm-btn" ${isConfirmed ? 'disabled' : ''}>
-                    <i class="fas ${isConfirmed ? 'fa-check' : 'fa-check-circle'}"></i>
-                    ${isConfirmed ? 'Confirmado' : 'Confirmar'}
-                </button>
-                ${isConfirmed ? '<button class="edit-btn" onclick="editItem(' + item.id + ')"><i class="fas fa-edit"></i> Editar</button>' : ''}
+                <div class="quantity-label">Quantidade Entregue</div>
+                <input type="number" class="quantity-input" value="${item.QTENTREGUE || 0}" min="0" max="${(item.QTPEDIDA || 0) * 2}">
             </div>
         </div>
     `;
     
-    // Event listeners para o item
-    const confirmBtn = card.querySelector('.confirm-btn');
+    // Event listener apenas para o campo de quantidade
     const quantityInput = card.querySelector('.quantity-input');
-    
-    if (!isConfirmed) {
-        confirmBtn.addEventListener('click', () => confirmItem(item.id, quantityInput.value));
-    }
     
     quantityInput.addEventListener('input', () => {
         const value = parseInt(quantityInput.value) || 0;
-        if (value > item.quantity * 2) {
-            quantityInput.value = item.quantity * 2;
+        if (value > (item.QTPEDIDA || 0) * 2) {
+            quantityInput.value = (item.QTPEDIDA || 0) * 2;
         }
-        updateItemCardStyle(card, value, item.quantity);
+        updateItemCardStyle(card, value, item.QTPEDIDA || 0);
     });
     
     return card;
 }
 
-// Confirmar item
-function confirmItem(itemId, quantity) {
-    const quantityNum = parseInt(quantity) || 0;
-    
-    if (quantityNum <= 0) {
-        alert('Por favor, informe uma quantidade válida!');
-        return;
-    }
-    
-    // Encontrar e atualizar o item
-    const item = currentOrder.items.find(i => i.id === itemId);
-    if (item) {
-        item.confirmed = true;
-        item.confirmedQuantity = quantityNum;
-        
-        // Verificar se todos os itens foram confirmados E com quantidade suficiente
-        // Um pedido só é marcado como 'separado' quando TODOS os itens têm quantidade >= solicitada
-        const allFullyConfirmed = currentOrder.items.every(i => 
-            i.confirmed && i.confirmedQuantity >= i.quantity
-        );
-        if (allFullyConfirmed) {
-            currentOrder.status = 'separado';
-        }
-        
-        // Atualizar o modal
-        loadOrderItems(currentOrder);
-        
-        // Atualizar a lista de pedidos
-        loadOrders();
-        updateStats();
-        
-        // Mostrar notificação
-        const message = quantityNum < item.quantity ? 
-            `Item confirmado com quantidade menor (${quantityNum}/${item.quantity})` : 
-            'Item confirmado com sucesso!';
-        showNotification(message, quantityNum < item.quantity ? 'warning' : 'success');
-    }
-}
+
 
 // Salvar alterações do pedido
-function saveOrderChanges() {
-    // Atualizar o pedido na lista principal
-    const orderIndex = orders.findIndex(o => o.id === currentOrder.id);
-    if (orderIndex !== -1) {
-        orders[orderIndex] = currentOrder;
+async function saveOrderChanges() {
+    try {
+        if (!currentOrder) {
+            showNotification('Nenhum pedido selecionado', 'error');
+            return;
+        }
+
+        console.log('🔍 Salvando alterações do pedido:', currentOrder.NUMPEDIDO);
+
+        // Coletar todas as quantidades dos campos de input
+        const modal = document.getElementById('orderModal');
+        const quantityInputs = modal.querySelectorAll('.quantity-input');
+        const itensAtualizados = [];
+
+        // Validar e coletar as quantidades
+        for (let i = 0; i < quantityInputs.length; i++) {
+            const input = quantityInputs[i];
+            const itemId = input.closest('.item-card').dataset.itemId;
+            const quantidadeDigitada = parseInt(input.value) || 0;
+            const item = currentOrder.itens.find(item => item.ID.toString() === itemId);
+            
+            if (!item) {
+                console.error(`❌ Item não encontrado: ${itemId}`);
+                continue;
+            }
+
+            // Validar quantidade
+            if (quantidadeDigitada < 0) {
+                showNotification(`Quantidade inválida para o item ${item.PRODUTO}`, 'error');
+                return;
+            }
+
+            if (quantidadeDigitada > item.QTPEDIDA * 2) {
+                showNotification(`Quantidade muito alta para o item ${item.PRODUTO}`, 'error');
+                return;
+            }
+
+            itensAtualizados.push({
+                itemId: itemId,
+                quantidadeEntregue: quantidadeDigitada,
+                quantidadePedida: item.QTPEDIDA
+            });
+
+            // Atualizar o item no currentOrder
+            item.QTENTREGUE = quantidadeDigitada;
+            item.QTRESTANTE = Math.max(0, item.QTPEDIDA - quantidadeDigitada);
+        }
+
+        console.log('📊 Itens atualizados:', itensAtualizados);
+
+        // Verificar se todos os itens estão completos (quantidade entregue >= quantidade pedida)
+        const todosItensConfirmados = itensAtualizados.every(item => 
+            item.quantidadeEntregue >= item.quantidadePedida
+        );
+
+        console.log('✅ Todos os itens confirmados:', todosItensConfirmados);
+
+        // Salvar todas as quantidades via API
+        const response = await apiRequest(`/pedidos/${currentOrder.NUMPEDIDO}/salvar-quantidades`, {
+            method: 'POST',
+            body: JSON.stringify({ 
+                itens: itensAtualizados,
+                status: todosItensConfirmados ? 1 : 0
+            })
+        });
+
+        if (response.success) {
+            console.log('✅ Quantidades e status salvos com sucesso:', response.data);
+            showNotification(
+                todosItensConfirmados 
+                    ? 'Pedido marcado como separado com sucesso!' 
+                    : 'Quantidades atualizadas com sucesso!', 
+                'success'
+            );
+        } else {
+            console.error('❌ Erro ao salvar quantidades:', response.message);
+            showNotification(`Erro ao salvar quantidades: ${response.message}`, 'error');
+            return;
+        }
+
+        // Recarregar a lista de pedidos e estatísticas
+        await loadOrders();
+        await updateStats();
+        
+        // Fechar o modal
+        closeModal();
+        
+    } catch (error) {
+        console.error('❌ Erro ao salvar alterações:', error);
+        showNotification('Erro ao salvar alterações do pedido', 'error');
     }
-    
-    // Aqui você faria a chamada para a API para salvar no backend
-    console.log('Salvando alterações:', currentOrder);
-    
-    closeModal();
-    loadOrders();
-    updateStats();
-    
-    // Mostrar mensagem de sucesso
-    showNotification('Pedido atualizado com sucesso!', 'success');
 }
 
 // Fechar modal
 function closeModal() {
-    document.getElementById('orderModal').style.display = 'none';
-    currentOrder = null;
+    console.log('🔒 Tentando fechar modal...');
+    const modal = document.getElementById('orderModal');
+    if (modal) {
+        console.log('✅ Modal encontrado, alterando display para none');
+        
+        // Múltiplas formas de esconder o modal
+        modal.style.display = 'none';
+        modal.style.visibility = 'hidden';
+        modal.style.opacity = '0';
+        modal.style.zIndex = '-1';
+        modal.style.pointerEvents = 'none';
+        
+        // Remover classes que possam estar interferindo
+        modal.classList.remove('show', 'active');
+        
+        // NÃO limpar o conteúdo do modal - apenas esconder
+        // const modalContent = modal.querySelector('.modal-content');
+        // if (modalContent) {
+        //     modalContent.style.display = 'none';
+        // }
+        
+        currentOrder = null;
+        console.log('✅ Modal fechado com sucesso');
+        
+        // Verificar se realmente fechou
+        setTimeout(() => {
+            if (modal.style.display !== 'none') {
+                console.log('⚠️ Modal não fechou, tentando método alternativo');
+                forceCloseModal();
+            }
+        }, 100);
+    } else {
+        console.error('❌ Modal não encontrado!');
+    }
+}
+
+// Função alternativa para fechar modal (caso a primeira não funcione)
+function forceCloseModal() {
+    const modal = document.getElementById('orderModal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.style.visibility = 'hidden';
+        modal.style.opacity = '0';
+        modal.style.zIndex = '-1';
+        modal.style.pointerEvents = 'none';
+        modal.classList.remove('show', 'active');
+        currentOrder = null;
+        console.log('🔧 Modal forçado a fechar');
+    }
 }
 
 // Configurar autocomplete para clientes
 function setupClientAutocomplete() {
     const clientInput = document.getElementById('clientFilter');
     const dropdown = document.getElementById('clientDropdown');
+    
+    // Verificar se os elementos existem
+    if (!clientInput || !dropdown) {
+        console.log('⚠️ Elementos de autocomplete de clientes não encontrados');
+        return;
+    }
     
     clientInput.addEventListener('input', function() {
         const value = this.value.toLowerCase();
@@ -462,7 +698,7 @@ function setupClientAutocomplete() {
     
     // Fechar dropdown quando clicar fora
     document.addEventListener('click', function(e) {
-        if (!clientInput.contains(e.target) && !dropdown.contains(e.target)) {
+        if (clientInput && dropdown && !clientInput.contains(e.target) && !dropdown.contains(e.target)) {
             dropdown.style.display = 'none';
         }
     });
@@ -472,6 +708,12 @@ function setupClientAutocomplete() {
 function setupProductAutocomplete() {
     const productInput = document.getElementById('productFilter');
     const dropdown = document.getElementById('productDropdown');
+    
+    // Verificar se os elementos existem
+    if (!productInput || !dropdown) {
+        console.log('⚠️ Elementos de autocomplete de produtos não encontrados');
+        return;
+    }
     
     productInput.addEventListener('input', function() {
         const value = this.value.toLowerCase();
@@ -512,7 +754,7 @@ function setupProductAutocomplete() {
     
     // Fechar dropdown quando clicar fora
     document.addEventListener('click', function(e) {
-        if (!productInput.contains(e.target) && !dropdown.contains(e.target)) {
+        if (productInput && dropdown && !productInput.contains(e.target) && !dropdown.contains(e.target)) {
             dropdown.style.display = 'none';
         }
     });
@@ -520,81 +762,134 @@ function setupProductAutocomplete() {
 
 // Atualizar estilo do card do item baseado na quantidade
 function updateItemCardStyle(card, confirmedQuantity, requestedQuantity) {
-    card.classList.remove('quantidade-menor');
+    card.classList.remove('confirmado', 'quantidade-menor');
     
-    if (confirmedQuantity > 0 && confirmedQuantity < requestedQuantity) {
-        card.classList.add('quantidade-menor');
+    if (confirmedQuantity >= requestedQuantity && confirmedQuantity > 0) {
+        card.classList.add('confirmado'); // Verde - confirmado totalmente
+    } else if (confirmedQuantity > 0 && confirmedQuantity < requestedQuantity) {
+        card.classList.add('quantidade-menor'); // Amarelo - quantidade menor
     }
 }
 
 // Editar item confirmado
 function editItem(itemId) {
-    const item = currentOrder.items.find(i => i.id === itemId);
+    const item = currentOrder.itens.find(i => i.CODPRODUTO === itemId);
     if (item) {
-        item.confirmed = false;
-        loadOrderItems(currentOrder);
+        // Permitir edição do item
+        const card = document.querySelector(`[data-item-id="${itemId}"]`);
+        if (card) {
+            const quantityInput = card.querySelector('.quantity-input');
+            const confirmBtn = card.querySelector('.confirm-btn');
+            
+            quantityInput.disabled = false;
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = '<i class="fas fa-check-circle"></i> Confirmar';
+        }
     }
 }
 
 // Aplicar filtros
-function applyFilters() {
+async function applyFilters() {
     const dateFilter = document.getElementById('dateFilter').value;
+    const numPedidoFilter = document.getElementById('numPedidoFilter').value;
+    const numCargaFilter = document.getElementById('numCargaFilter').value;
+    const motorista = document.getElementById('driverFilter').value;
+    const veiculo = document.getElementById('vehicleFilter').value;
     const client = document.getElementById('clientFilter').value;
-    const product = document.getElementById('productFilter').value;
-    const status = document.getElementById('statusFilter').value;
+    const vendedor = document.getElementById('vendedorFilter').value;
+    const transportadora = document.getElementById('transportadoraFilter').value;
     
-    let filteredOrders = orders.filter(order => {
-        // Filtro por data de saída (data exata)
-        if (dateFilter && order.date !== dateFilter) return false;
-        
-        // Filtro por cliente
-        if (client) {
-            const clientMatch = order.client.toLowerCase().includes(client.toLowerCase()) ||
-                              order.clientCode.toLowerCase().includes(client.toLowerCase());
-            if (!clientMatch) return false;
+    try {
+        // Construir query string para filtros
+        const params = new URLSearchParams();
+        if (dateFilter) {
+            // Converter para formato de data esperado pelo backend
+            const date = new Date(dateFilter);
+            const dateStr = date.toISOString().split('T')[0];
+            params.append('dataInicio', dateStr);
         }
+        if (numPedidoFilter) params.append('numPedido', numPedidoFilter);
+        if (numCargaFilter) params.append('numCarga', numCargaFilter);
+        if (motorista) params.append('motorista', motorista);
+        if (veiculo) params.append('veiculo', veiculo);
+        if (client) params.append('cliente', client);
+        if (vendedor) params.append('vendedor', vendedor);
+        if (transportadora) params.append('transportadora', transportadora);
         
-        // Filtro por status
-        if (status && order.status !== status) return false;
+        // Buscar pedidos filtrados da API
+        const response = await apiRequest(`/pedidos?${params.toString()}`);
+        const filteredOrders = response.data || [];
         
-        // Filtro por produto
-        if (product) {
-            const hasProduct = order.items.some(item => 
-                item.name.toLowerCase().includes(product.toLowerCase()) || 
-                item.code.toLowerCase().includes(product.toLowerCase())
-            );
-            if (!hasProduct) return false;
-        }
-        
-        return true;
-    });
-    
-    loadOrders(filteredOrders);
+        loadOrders(filteredOrders);
+        showNotification(`Filtros aplicados. ${filteredOrders.length} pedido(s) encontrado(s).`, 'success');
+    } catch (error) {
+        console.error('Erro ao aplicar filtros:', error);
+        showNotification('Erro ao aplicar filtros', 'error');
+    }
 }
 
 // Limpar filtros
-function clearFilters() {
-    document.getElementById('dateFilter').value = '';
+async function clearFilters() {
+    // Não limpar a data, manter a data atual
+    // document.getElementById('dateFilter').value = '';
+    document.getElementById('numPedidoFilter').value = '';
+    document.getElementById('numCargaFilter').value = '';
+    document.getElementById('driverFilter').value = '';
+    document.getElementById('vehicleFilter').value = '';
     document.getElementById('clientFilter').value = '';
-    document.getElementById('productFilter').value = '';
-    document.getElementById('statusFilter').value = '';
+    document.getElementById('vendedorFilter').value = '';
+    document.getElementById('transportadoraFilter').value = '';
     
-    loadOrders();
+    await loadOrders();
 }
 
 // Atualizar estatísticas
-function updateStats() {
-    const pendingCount = orders.filter(order => order.status === 'pendente').length;
-    const completedCount = orders.filter(order => order.status === 'separado').length;
-    
-    document.getElementById('pendingCount').textContent = pendingCount;
-    document.getElementById('completedCount').textContent = completedCount;
+async function updateStats() {
+    try {
+        const response = await apiRequest('/pedidos/estatisticas');
+        const stats = response.data;
+        
+        document.getElementById('pendingCount').textContent = stats.PEDIDOS_PENDENTES || 0;
+        document.getElementById('completedCount').textContent = stats.PEDIDOS_SEPARADOS || 0;
+    } catch (error) {
+        console.error('Erro ao carregar estatísticas:', error);
+        // Fallback para contagem local
+        const pendentesCount = orders.filter(order => {
+            const statusBit = order.STATUS_BIT !== null && order.STATUS_BIT !== undefined ? order.STATUS_BIT : 0;
+            return order.STATUS_EXPEDICAO === 'PENDENTE' || statusBit === 0;
+        }).length;
+        const separadosCount = orders.filter(order => {
+            const statusBit = order.STATUS_BIT !== null && order.STATUS_BIT !== undefined ? order.STATUS_BIT : 0;
+            return order.STATUS_EXPEDICAO === 'SEPARADO' || statusBit === 1;
+        }).length;
+        
+        document.getElementById('pendingCount').textContent = pendentesCount;
+        document.getElementById('completedCount').textContent = separadosCount;
+    }
 }
 
 // Formatar data
 function formatDate(dateString) {
+    if (!dateString) return 'N/A';
     const date = new Date(dateString);
     return date.toLocaleDateString('pt-BR');
+}
+
+// Formatar moeda
+function formatCurrency(value) {
+    if (!value) return '0,00';
+    return parseFloat(value).toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+}
+
+// Obter texto do status
+function getStatusText(status) {
+    const statusMap = {
+        'B': 'Separado'
+    };
+    return statusMap[status] || status;
 }
 
 // Mostrar notificação
@@ -743,48 +1038,7 @@ function generateSeparatedReport() {
         return;
     }
     
-    const summary = `
-        <div class="report-summary">
-            <h4>Resumo do Relatório</h4>
-            <div class="summary-stats">
-                <div class="summary-stat">
-                    <div class="number">${filteredOrders.length}</div>
-                    <div class="label">Pedidos Separados</div>
-                </div>
-                <div class="summary-stat">
-                    <div class="number">${filteredOrders.reduce((total, order) => total + order.items.length, 0)}</div>
-                    <div class="label">Total de Itens</div>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    const table = `
-        <table class="report-table">
-            <thead>
-                <tr>
-                    <th>Pedido</th>
-                    <th>Cliente</th>
-                    <th>Data</th>
-                    <th>Itens</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${filteredOrders.map(order => `
-                    <tr>
-                        <td>${order.number}</td>
-                        <td>${order.client}</td>
-                        <td>${formatDate(order.date)}</td>
-                        <td>${order.items.length}</td>
-                        <td><span class="status-badge separado">Separado</span></td>
-                    </tr>
-                `).join('')}
-            </tbody>
-        </table>
-    `;
-    
-    content.innerHTML = summary + table;
+    content.innerHTML = '<p class="no-data">Relatório de pedidos separados em desenvolvimento.</p>';
     currentReport = { type: 'separated', data: filteredOrders, date: dateFilter };
     currentReportType = 'separated';
 }
@@ -804,173 +1058,25 @@ function generatePendingReport() {
         return;
     }
     
-    const summary = `
-        <div class="report-summary">
-            <h4>Resumo do Relatório</h4>
-            <div class="summary-stats">
-                <div class="summary-stat">
-                    <div class="number">${filteredOrders.length}</div>
-                    <div class="label">Pedidos Pendentes</div>
-                </div>
-                <div class="summary-stat">
-                    <div class="number">${filteredOrders.reduce((total, order) => total + order.items.filter(item => !item.confirmed).length, 0)}</div>
-                    <div class="label">Itens Pendentes</div>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    let tableRows = '';
-    filteredOrders.forEach(order => {
-        const pendingItems = order.items.filter(item => !item.confirmed);
-        const confirmedItems = order.items.filter(item => item.confirmed);
-        
-        if (pendingItems.length > 0) {
-            tableRows += `
-                <tr>
-                    <td rowspan="${pendingItems.length + 1}">${order.number}</td>
-                    <td rowspan="${pendingItems.length + 1}">${order.client}</td>
-                    <td rowspan="${pendingItems.length + 1}">${formatDate(order.date)}</td>
-                    <td colspan="3"><strong>Itens Pendentes:</strong></td>
-                </tr>
-            `;
-            
-            pendingItems.forEach(item => {
-                tableRows += `
-                    <tr>
-                        <td>${item.name} (${item.code})</td>
-                        <td>${item.quantity}</td>
-                        <td>0</td>
-                        <td>${item.quantity}</td>
-                    </tr>
-                `;
-            });
-        }
-    });
-    
-    const table = `
-        <table class="report-table">
-            <thead>
-                <tr>
-                    <th>Pedido</th>
-                    <th>Cliente</th>
-                    <th>Data</th>
-                    <th>Produto</th>
-                    <th>Quantidade Pedida</th>
-                    <th>Quantidade Separada</th>
-                    <th>Quantidade Faltante</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${tableRows}
-            </tbody>
-        </table>
-    `;
-    
-    content.innerHTML = summary + table;
+    content.innerHTML = '<p class="no-data">Relatório de pedidos pendentes em desenvolvimento.</p>';
     currentReport = { type: 'pending', data: filteredOrders, date: dateFilter };
     currentReportType = 'pending';
 }
 
 // Relatório de Produtos Faltantes
 function generateMissingReport() {
-    const departmentFilter = document.getElementById('departmentFilter').value;
-    
-    // Coletar todos os produtos faltantes
-    let missingProducts = {};
-    
-    orders.forEach(order => {
-        if (order.status === 'pendente') {
-            order.items.forEach(item => {
-                if (!item.confirmed || item.confirmedQuantity < item.quantity) {
-                    const missingQty = item.quantity - (item.confirmedQuantity || 0);
-                    const key = `${item.code}-${item.name}`;
-                    
-                    if (!missingProducts[key]) {
-                        missingProducts[key] = {
-                            code: item.code,
-                            name: item.name,
-                            totalMissing: 0,
-                            departments: new Set()
-                        };
-                    }
-                    
-                    missingProducts[key].totalMissing += missingQty;
-                    // Simular departamento baseado no código do produto
-                    const dept = getDepartmentFromCode(item.code);
-                    missingProducts[key].departments.add(dept);
-                }
-            });
-        }
-    });
-    
-    // Filtrar por departamento se especificado
-    if (departmentFilter) {
-        Object.keys(missingProducts).forEach(key => {
-            if (!missingProducts[key].departments.has(departmentFilter)) {
-                delete missingProducts[key];
-            }
-        });
-    }
-    
     const content = document.getElementById('missingReportContent');
-    
-    if (Object.keys(missingProducts).length === 0) {
-        content.innerHTML = '<p class="no-data">Nenhum produto faltante encontrado.</p>';
-        return;
-    }
-    
-    const summary = `
-        <div class="report-summary">
-            <h4>Resumo do Relatório</h4>
-            <div class="summary-stats">
-                <div class="summary-stat">
-                    <div class="number">${Object.keys(missingProducts).length}</div>
-                    <div class="label">Produtos Faltantes</div>
-                </div>
-                <div class="summary-stat">
-                    <div class="number">${Object.values(missingProducts).reduce((total, product) => total + product.totalMissing, 0)}</div>
-                    <div class="label">Total de Unidades</div>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    const table = `
-        <table class="report-table">
-            <thead>
-                <tr>
-                    <th>Código</th>
-                    <th>Produto</th>
-                    <th>Quantidade Faltante</th>
-                    <th>Departamento</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${Object.values(missingProducts).map(product => `
-                    <tr>
-                        <td>${product.code}</td>
-                        <td>${product.name}</td>
-                        <td><strong>${product.totalMissing}</strong></td>
-                        <td>${Array.from(product.departments).join(', ')}</td>
-                    </tr>
-                `).join('')}
-            </tbody>
-        </table>
-    `;
-    
-    content.innerHTML = summary + table;
-    currentReport = { type: 'missing', data: missingProducts, department: departmentFilter };
+    content.innerHTML = '<p class="no-data">Relatório de produtos faltantes em desenvolvimento.</p>';
+    currentReport = { type: 'missing', data: {} };
     currentReportType = 'missing';
 }
 
-// Função auxiliar para determinar departamento baseado no código
-function getDepartmentFromCode(code) {
-    const codeNum = parseInt(code.replace(/\D/g, ''));
-    if (codeNum <= 3) return 'eletronicos';
-    if (codeNum <= 6) return 'vestuario';
-    if (codeNum <= 9) return 'casa';
-    return 'esporte';
+// Relatório de Produtos Faltantes por Cliente
+function generateMissingByClientReport() {
+    const content = document.getElementById('missingByClientReportContent');
+    content.innerHTML = '<p class="no-data">Relatório de produtos faltantes por cliente em desenvolvimento.</p>';
+    currentReport = { type: 'missingByClient', data: {} };
+    currentReportType = 'missingByClient';
 }
 
 // Exportar para PDF
@@ -980,12 +1086,7 @@ function exportToPDF() {
         return;
     }
     
-    // Simular exportação para PDF
-    showNotification('Exportando para PDF...', 'info');
-    
-    setTimeout(() => {
-        showNotification('Relatório exportado com sucesso!', 'success');
-    }, 2000);
+    showNotification('Exportação para PDF em desenvolvimento.', 'info');
 }
 
 // Imprimir relatório
@@ -995,43 +1096,23 @@ function printReport() {
         return;
     }
     
-    const reportContent = document.querySelector('.report-tab.active .report-content');
-    const printWindow = window.open('', '_blank');
-    
-    printWindow.document.write(`
-        <html>
-            <head>
-                <title>Relatório - Sistema de Expedição</title>
-                <style>
-                    body { font-family: Arial, sans-serif; margin: 20px; }
-                    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                    th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
-                    th { background: #f5f5f5; }
-                    .report-header { text-align: center; margin-bottom: 30px; }
-                    .report-summary { background: #e3f2fd; padding: 15px; margin-bottom: 20px; }
-                    @media print { body { margin: 0; } }
-                </style>
-            </head>
-            <body>
-                <div class="report-header">
-                    <h1>Sistema de Controle de Expedição</h1>
-                    <h2>Relatório - ${getReportTitle()}</h2>
-                    <p>Data: ${new Date().toLocaleDateString('pt-BR')}</p>
-                </div>
-                ${reportContent.innerHTML}
-            </body>
-        </html>
-    `);
-    
-    printWindow.document.close();
-    printWindow.print();
+    showNotification('Impressão em desenvolvimento.', 'info');
 }
 
-function getReportTitle() {
-    switch (currentReportType) {
-        case 'separated': return 'Pedidos Separados';
-        case 'pending': return 'Pedidos Pendentes';
-        case 'missing': return 'Produtos Faltantes';
-        default: return 'Relatório';
-    }
-} 
+// Exibir status de expedição
+function displayStatusExpedicao(status) {
+    const statusContainer = document.getElementById('statusExpedicao');
+    if (!statusContainer) return;
+    
+    const isSeparado = status === 'SEPARADO' || status === 1;
+    const statusClass = isSeparado ? 'success' : 'warning';
+    const statusIcon = isSeparado ? '✅' : '⏳';
+    const statusText = isSeparado ? 'Separado' : 'Pendente';
+    
+    statusContainer.innerHTML = `
+        <div class="status-expedicao ${statusClass}">
+            <span class="status-icon">${statusIcon}</span>
+            <span class="status-text">${statusText}</span>
+        </div>
+    `;
+}

@@ -1,0 +1,278 @@
+// Queries SQL adaptadas dos scripts fornecidos
+// Mantendo os nomes das colunas originais conforme solicitado
+
+const pedidosQueries = {
+    // Query de teste simples para verificar se há pedidos
+    testarPedidos: `
+        SELECT 
+            CAB.NUMPEDIDO,
+            CAB.STATUS,
+            CAB.DTSAIDA,
+            CAB.TIPOVENDA,
+            CAB.ISFATURADO,
+            CAB.CODCLIENTE,
+            CAB.CODVENDEDOR
+        FROM CABPEDVENDA CAB WITH(NOLOCK)
+        WHERE CAB.STATUS = 'B'
+        AND CAB.ISFATURADO = 1
+        ORDER BY CAB.DTSAIDA DESC
+    `,
+    
+    // Query base para listar pedidos com todas as informações incluindo status de expedição
+    getQueryBase: (dataFiltro) => `
+        SELECT
+            CAB.NUMPEDIDO,
+            CAB.NUMCARGA,
+            CAB.CODCLIENTE,
+            CLI.NOME AS CLIENTE,
+            CLI.FANTASIA,
+            CASE 
+                WHEN SE.STATUS = 1 AND ISNULL(PROD_FALTANTES.QTD_FALTANTES, 0) = 0 THEN 'SEPARADO'
+                ELSE 'PENDENTE'
+            END AS STATUS_EXPEDICAO,
+            CASE 
+                WHEN SE.STATUS = 1 THEN 'F'
+                ELSE 'B'
+            END AS STATUS,
+            CONVERT(CHAR(10), CAB.DTSAIDA, 120) AS DTSAIDA,
+            CONVERT(CHAR(10), CAB.DTPREVENTREGA, 120) AS DTPREVENTREGA,
+            CAB.CODVENDEDOR,
+            V.NOME AS VENDEDOR,
+            CAB.OBSERVACAO,
+            CAB.OBSPEDIDO,
+            CAB.CODTRANSPORTADORA,
+            TRANSP.NOME AS NOMETRANSPORTADORA,
+            CID.CIDADE AS NOME_CIDADE,
+            CID.UF AS UF_CIDADE,
+            ISNULL(VEIC.DESCRICAO, 'N/A') AS VEICULO,
+            ISNULL(MOT.NOME, 'N/A') AS MOTORISTA,
+            ISNULL(PROD_FALTANTES.QTD_FALTANTES, 0) AS QTD_PRODUTOS_FALTANTES,
+            COALESCE(SE.STATUS, 0) AS STATUS_BIT
+        FROM CABPEDVENDA CAB WITH(NOLOCK)
+        INNER JOIN PESSOA CLI WITH(NOLOCK) ON CAB.CODCLIENTE = CLI.CODIGO
+        INNER JOIN VENDEDOR V WITH(NOLOCK) ON V.CODIGO = CAB.CODVENDEDOR
+        INNER JOIN CIDADE CID WITH(NOLOCK) ON CID.CODMUNICIPIO = CLI.CODCIDADE
+        LEFT JOIN PESSOA TRANSP WITH(NOLOCK) ON CAB.CODTRANSPORTADORA = TRANSP.CODIGO
+        LEFT JOIN CARREGAMENTO CAR WITH(NOLOCK) ON CAB.NUMCARGA = CAR.NUMCARGA
+        LEFT JOIN VEICULO VEIC WITH(NOLOCK) ON CAR.CODVEICULO = VEIC.CODIGO
+        LEFT JOIN PESSOA MOT WITH(NOLOCK) ON CAR.CODMOTORISTA = MOT.CODIGO
+        LEFT JOIN STATUS_EXPEDICAO SE WITH(NOLOCK) ON CAB.NUMPEDIDO = SE.NUMPEDIDO
+        LEFT JOIN (
+            SELECT
+                I.NUMPEDIDO,
+                COUNT(CASE WHEN I.QTRESTANTE > 0 THEN 1 END) AS QTD_FALTANTES
+            FROM ITEMPEDVENDA I WITH(NOLOCK)
+            WHERE I.QTRESTANTE > 0
+            GROUP BY I.NUMPEDIDO
+        ) PROD_FALTANTES ON CAB.NUMPEDIDO = PROD_FALTANTES.NUMPEDIDO
+        WHERE CAB.STATUS = 'B'
+        AND CAB.ISFATURADO = 1
+        AND CAB.NUMCARGA IS NOT NULL
+        AND CAB.DTSAIDA LIKE '%${dataFiltro}%'
+        ORDER BY CAB.DTSAIDA DESC
+    `,
+
+    // Query para buscar itens de um pedido específico
+    buscarItensPedido: `
+        SELECT 
+            I.CODPRODUTO,
+            P.NOME AS PRODUTO,
+            I.QTPEDIDA,
+            ISNULL(I.QTENTREGUE, 0) AS QTENTREGUE,
+            ISNULL(I.QTRESTANTE, 0) AS QTRESTANTE,
+            I.ID
+        FROM ITEMPEDVENDA I WITH(NOLOCK)
+        INNER JOIN PRODUTO P WITH(NOLOCK) ON P.CODIGO = I.CODPRODUTO
+        WHERE I.NUMPEDIDO = @P0
+        ORDER BY I.ID
+    `,
+
+    // Query para buscar detalhes completos de um pedido
+    buscarDetalhesPedido: `
+        SELECT 
+            CAB.NUMPEDIDO,
+            CAB.NUMCARGA,
+            CAB.CODCLIENTE,
+            CLI.NOME AS CLIENTE,
+            CLI.FANTASIA,
+            CLI.CNPJ,
+            CAB.STATUS,
+            CONVERT(CHAR(10), CAB.DTSAIDA, 120) AS DTSAIDA,
+            CONVERT(CHAR(10), CAB.DTPREVENTREGA, 120) AS DTPREVENTREGA,
+            CAB.CODVENDEDOR,
+            V.NOME AS VENDEDOR,
+            CAB.OBSERVACAO,
+            CAB.OBSPEDIDO,
+            CAB.CODTRANSPORTADORA,
+            TRANSP.NOME AS NOMETRANSPORTADORA,
+            CID.CIDADE AS NOME_CIDADE,
+            CID.UF AS UF_CIDADE,
+            CAB.TIPOFRETE,
+            ISNULL(VEIC.DESCRICAO, 'N/A') AS VEICULO,
+            ISNULL(MOT.NOME, 'N/A') AS MOTORISTA,
+            COALESCE(SE.STATUS, 0) AS STATUS_EXPEDICAO
+        FROM CABPEDVENDA CAB WITH(NOLOCK)
+        INNER JOIN PESSOA CLI WITH(NOLOCK) ON CAB.CODCLIENTE = CLI.CODIGO
+        INNER JOIN VENDEDOR V WITH(NOLOCK) ON V.CODIGO = CAB.CODVENDEDOR
+        INNER JOIN CIDADE CID WITH(NOLOCK) ON CID.CODMUNICIPIO = CLI.CODCIDADE
+        LEFT JOIN PESSOA TRANSP WITH(NOLOCK) ON CAB.CODTRANSPORTADORA = TRANSP.CODIGO
+        LEFT JOIN CARREGAMENTO CAR WITH(NOLOCK) ON CAB.NUMCARGA = CAR.NUMCARGA
+        LEFT JOIN VEICULO VEIC WITH(NOLOCK) ON CAR.CODVEICULO = VEIC.CODIGO
+        LEFT JOIN PESSOA MOT WITH(NOLOCK) ON CAR.CODMOTORISTA = MOT.CODIGO
+        LEFT JOIN STATUS_EXPEDICAO SE WITH(NOLOCK) ON CAB.NUMPEDIDO = SE.NUMPEDIDO
+        WHERE CAB.NUMPEDIDO = @P0
+    `,
+
+    // Query para buscar opções de filtros
+    buscarClientes: `
+        SELECT DISTINCT TOP 50
+            CLI.CODIGO,
+            CLI.NOME,
+            CLI.FANTASIA
+        FROM PESSOA CLI WITH(NOLOCK)
+        INNER JOIN CABPEDVENDA CAB WITH(NOLOCK) ON CAB.CODCLIENTE = CLI.CODIGO
+        WHERE CAB.STATUS = 'B'
+        AND CAB.ISFATURADO = 1
+        ORDER BY CLI.NOME
+    `,
+
+    buscarVendedores: `
+        SELECT DISTINCT TOP 50
+            V.CODIGO,
+            V.NOME
+        FROM VENDEDOR V WITH(NOLOCK)
+        INNER JOIN CABPEDVENDA CAB WITH(NOLOCK) ON CAB.CODVENDEDOR = V.CODIGO
+        WHERE CAB.STATUS = 'B'
+        AND CAB.ISFATURADO = 1
+        ORDER BY V.NOME
+    `,
+
+    buscarTransportadoras: `
+        SELECT DISTINCT TOP 50
+            TRANSP.CODIGO,
+            TRANSP.NOME
+        FROM PESSOA TRANSP WITH(NOLOCK)
+        INNER JOIN CABPEDVENDA CAB WITH(NOLOCK) ON CAB.CODTRANSPORTADORA = TRANSP.CODIGO
+        WHERE CAB.STATUS = 'B'
+        AND CAB.ISFATURADO = 1
+        AND TRANSP.CODIGO IS NOT NULL
+        ORDER BY TRANSP.NOME
+    `,
+
+    // Query para buscar veículos (distinct)
+    buscarVeiculos: `
+        SELECT DISTINCT TOP 50
+            VEIC.CODIGO,
+            VEIC.DESCRICAO
+        FROM VEICULO VEIC WITH(NOLOCK)
+        INNER JOIN CARREGAMENTO CAR WITH(NOLOCK) ON CAR.CODVEICULO = VEIC.CODIGO
+        INNER JOIN CABPEDVENDA CAB WITH(NOLOCK) ON CAB.NUMCARGA = CAR.NUMCARGA
+        WHERE CAB.STATUS = 'B'
+        AND CAB.ISFATURADO = 1
+        ORDER BY VEIC.DESCRICAO
+    `,
+
+    // Query para buscar motoristas (distinct)
+    buscarMotoristas: `
+        SELECT DISTINCT TOP 50
+            MOT.CODIGO,
+            MOT.NOME
+        FROM PESSOA MOT WITH(NOLOCK)
+        INNER JOIN CARREGAMENTO CAR WITH(NOLOCK) ON CAR.CODMOTORISTA = MOT.CODIGO
+        INNER JOIN CABPEDVENDA CAB WITH(NOLOCK) ON CAB.NUMCARGA = CAR.NUMCARGA
+        WHERE CAB.STATUS = 'B'
+        AND CAB.ISFATURADO = 1
+        ORDER BY MOT.NOME
+    `,
+
+    // Query para buscar cargas (distinct)
+    buscarCargas: `
+        SELECT DISTINCT TOP 50
+            CAB.NUMCARGA
+        FROM CABPEDVENDA CAB WITH(NOLOCK)
+        WHERE CAB.STATUS = 'B'
+        AND CAB.ISFATURADO = 1
+        AND CAB.NUMCARGA IS NOT NULL
+        ORDER BY CAB.NUMCARGA
+    `,
+
+    // Query para estatísticas
+    buscarEstatisticas: `
+        SELECT 
+            COUNT(*) AS TOTAL_PEDIDOS,
+            COUNT(CASE WHEN COALESCE(SE.STATUS, 0) = 1 THEN 1 END) AS PEDIDOS_SEPARADOS,
+            COUNT(CASE WHEN COALESCE(SE.STATUS, 0) = 0 THEN 1 END) AS PEDIDOS_PENDENTES,
+            COUNT(CASE WHEN PROD_FALTANTES.QTD_FALTANTES > 0 THEN 1 END) AS PEDIDOS_COM_FALTANTES,
+            SUM(ISNULL(PROD_FALTANTES.QTD_FALTANTES, 0)) AS TOTAL_PRODUTOS_FALTANTES
+        FROM CABPEDVENDA CAB WITH(NOLOCK)
+        LEFT JOIN STATUS_EXPEDICAO SE WITH(NOLOCK) ON CAB.NUMPEDIDO = SE.NUMPEDIDO
+        LEFT JOIN (
+            SELECT 
+                I.NUMPEDIDO,
+                COUNT(CASE WHEN I.QTRESTANTE > 0 THEN 1 END) AS QTD_FALTANTES
+            FROM ITEMPEDVENDA I WITH(NOLOCK)
+            WHERE I.QTRESTANTE > 0
+            GROUP BY I.NUMPEDIDO
+        ) PROD_FALTANTES ON CAB.NUMPEDIDO = PROD_FALTANTES.NUMPEDIDO
+        WHERE CAB.STATUS = 'B'
+        AND CAB.ISFATURADO = 1
+        AND CAB.NUMCARGA IS NOT NULL
+    `,
+
+    // Query para atualizar quantidade entregue de um item
+    atualizarQuantidadeEntregue: `
+        UPDATE ITEMPEDVENDA 
+        SET QTENTREGUE = @P1,
+            QTRESTANTE = QTPEDIDA - @P1,
+            VALORTOTENTREGUE = @P1 * VLUNITARIO,
+            VALORTOTRESTANTE = (QTPEDIDA - @P1) * VLUNITARIO
+        WHERE ID = @P0
+    `,
+
+    // Query para atualizar status do pedido para separado
+    atualizarStatusPedidoSeparado: `
+        UPDATE CABPEDVENDA 
+        SET STATUS = 'F'
+        WHERE NUMPEDIDO = @P0
+        AND NOT EXISTS (
+            SELECT 1 FROM ITEMPEDVENDA I 
+            WHERE I.NUMPEDIDO = CABPEDVENDA.NUMPEDIDO 
+            AND I.QTRESTANTE > 0
+        )
+    `,
+
+    // Query para inserir ou atualizar status de expedição
+    inserirOuAtualizarStatusExpedicao: `
+        MERGE STATUS_EXPEDICAO AS target
+        USING (SELECT @P0 AS NUMPEDIDO, @P1 AS STATUS) AS source
+        ON target.NUMPEDIDO = source.NUMPEDIDO
+        WHEN MATCHED THEN
+            UPDATE SET STATUS = source.STATUS
+        WHEN NOT MATCHED THEN
+            INSERT (NUMPEDIDO, STATUS) VALUES (source.NUMPEDIDO, source.STATUS);
+    `,
+
+    // Query para buscar produtos faltantes
+    buscarProdutosFaltantes: `
+        SELECT 
+            I.CODPRODUTO,
+            P.NOME AS PRODUTO,
+            P.UNIDADE,
+            ISNULL(I.QTPEDIDA, 0) AS QTPEDIDA,
+            ISNULL(I.QTENTREGUE, 0) AS QTENTREGUE,
+            ISNULL(I.QTRESTANTE, 0) AS QTRESTANTE,
+            CAB.NUMPEDIDO,
+            CLI.NOME AS CLIENTE,
+            CONVERT(CHAR(10), CAB.DTSAIDA, 120) AS DTSAIDA
+        FROM ITEMPEDVENDA I WITH(NOLOCK)
+        INNER JOIN PRODUTO P WITH(NOLOCK) ON I.CODPRODUTO = P.CODIGO
+        INNER JOIN CABPEDVENDA CAB WITH(NOLOCK) ON CAB.NUMPEDIDO = I.NUMPEDIDO
+        INNER JOIN PESSOA CLI WITH(NOLOCK) ON CAB.CODCLIENTE = CLI.CODIGO
+        WHERE I.QTRESTANTE > 0
+        AND CAB.STATUS = 'B'
+        AND CAB.ISFATURADO = 1
+        ORDER BY CAB.DTSAIDA DESC, CLI.NOME, P.NOME
+    `
+};
+
+module.exports = pedidosQueries; 

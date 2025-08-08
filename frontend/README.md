@@ -25,8 +25,8 @@ frontend/
 
 ### 2. Tela Principal (pedidos.html)
 - **Header**: Nome do sistema, usuário logado e botão de logout
-- **Filtros**: Data inicial/final, cliente, produto e status
-- **Lista de Pedidos**: Cards organizados com informações principais
+- **Filtros**: Data de saída, motorista, veículo, cliente, produto e status
+- **Lista de Pedidos**: Cards organizados com informações principais incluindo data de entrega, motorista e veículo
 - **Estatísticas**: Contadores de pedidos pendentes e separados
 
 ### 3. Modal de Detalhes do Pedido
@@ -57,6 +57,7 @@ frontend/
 - **Relatório de Pedidos Separados**: Lista todos os pedidos com status "separado" com filtro por data
 - **Relatório de Pedidos Pendentes**: Mostra pedidos pendentes e produtos faltantes com detalhes de quantidades
 - **Relatório de Produtos Faltantes**: Lista consolidada de produtos faltantes com filtro por departamento
+- **Relatório de Produtos Faltantes por Cliente**: Mostra produtos faltantes organizados por cliente com filtros de motorista e veículo
 - **Exportação**: Opções para salvar em PDF e imprimir relatórios
 - **Interface Intuitiva**: Sistema de abas para navegar entre diferentes tipos de relatório
 
@@ -82,6 +83,8 @@ frontend/
 
 ### 4. Filtros Disponíveis
 - **Data de Saída**: Selecione uma data específica (preenchida automaticamente com a data de hoje)
+- **Motorista**: Selecione um motorista específico
+- **Veículo**: Selecione um veículo específico
 - **Cliente**: Digite código ou nome do cliente (autocomplete)
 - **Produto**: Digite código ou nome do produto (autocomplete)
 - **Status**: Pendente ou Separado
@@ -99,6 +102,7 @@ frontend/
    - **Pedidos Separados**: Filtre por data e visualize pedidos completos
    - **Pedidos Pendentes**: Veja produtos faltantes com quantidades detalhadas
    - **Produtos Faltantes**: Lista consolidada por departamento
+   - **Faltantes por Cliente**: Produtos faltantes organizados por cliente com filtros de motorista e veículo
 3. Clique em "Gerar Relatório" para atualizar os dados
 4. Use "Exportar PDF" ou "Imprimir" para salvar/visualizar o relatório
 
@@ -116,8 +120,8 @@ frontend/
 - **Experiência do Usuário**: Busca mais intuitiva e rápida
 
 ### Sistema de Relatórios
-- **Três Tipos de Relatório**: Pedidos Separados, Pedidos Pendentes e Produtos Faltantes
-- **Filtros Específicos**: Data para pedidos, departamento para produtos faltantes
+- **Quatro Tipos de Relatório**: Pedidos Separados, Pedidos Pendentes, Produtos Faltantes e Faltantes por Cliente
+- **Filtros Específicos**: Data para pedidos, departamento para produtos faltantes, motorista e veículo para faltantes por cliente
 - **Exportação Completa**: PDF e impressão com formatação profissional
 - **Interface Moderna**: Sistema de abas intuitivo e responsivo
 - **Dados Consolidados**: Resumos estatísticos e tabelas detalhadas
